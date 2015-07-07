@@ -113,93 +113,61 @@ def preprocess(src_file):
     # the source.
     return re.sub(r'\s+', ' ', src).strip().split(' ')
 
-
 def run(tokens):
-    """ Run the program. """
-
+    def apply(application, accessor):
+        if application == NOP:
+            pass
+        elif application == INCREMENT:
+            data[accessor] += 1
+        elif application == DECREMENT:
+            data[accessor] -= 1
+        elif application == OUTPUT:
+            print data[accessor]
+        elif application == INPUT:
+            data[accessor] = ord(sys.stdin.read(1))
+        else:
+            data[accessor] = int(application)
 
     # The memory we are working with.
     data = [0] * (DATA_SIZE + 1)
 
-    def apply(value, accessor):
-        if value == NOP:
-            pass
-        elif value == INCREMENT:
-            data[accessor] += 1
-        elif value == DECREMENT:
-            data[accessor] -= 1
-        elif value == OUTPUT:
-            print data[accessor]
-        elif value == INPUT:
-            data[accessor] = ord(sys.stdin.read(1))
-        else:
-            return False
-        return True
+    stack = []
+    loop_index_stack = []
 
-    def accessor_is_nop(accessor):
-        return accessor == DATA_SIZE
-
-    def accessor_nop():
-        return DATA_SIZE
-
-    def get_accessor(tokens, index):
-        accessor, index = expression(tokens, index)
-        if accessor == NOP:
-            accessor = accessor_nop()
-        else:
-            accessor = int(accessor)
-            if accessor >= DATA_SIZE:
-                raise AddressOutOfRangeError('Attempted to access address '
-                        'larger than STERCUS_DATA_SIZE')
-        return accessor, index
-
-    def expression(tokens, start):
-        token = tokens[start]
-        if token == APPLICATOR_START:
-            return applicator(tokens, start + 1)
-        if token == CONDITIONAL_START:
-            return conditional(tokens, start + 1)
-        return token, start + 1
-
-    def applicator(tokens, start):
-        """ Parse an applicator block. """
-        accessor, index = get_accessor(tokens, start)
-
-        while index < len(tokens):
-            value, index = expression(tokens, index)
-            if (apply(value, accessor)):
-                continue
-            elif value == APPLICATOR_END:
-                return data[accessor], index
-            else:
-                data[accessor] = int(value)
-        print 'Error!'
-
-    def conditional(tokens, start):
-        """ Parse a conditional block. """
-        accessor, index = get_accessor(tokens, start)
-
-        loop_start = index
-        while data[accessor] != 0:
-            while index < len(tokens):
-                value, index = expression(tokens, index)
-                if (apply(value, accessor)):
-                    continue
-                elif value == CONDITIONAL_END:
-                    break
-                else:
-                    data[accessor] = int(value)
-            loop_end = index
-            index = loop_start # Reset the loop
-        return NOP, loop_end
-
-    # Start the party.
     index = 0
     while (index < len(tokens)):
-        _, index = expression(tokens, index)
+        token = tokens[index]
+        if token == APPLICATOR_END:
+            li = []
+            val = stack.pop()
+            while val != APPLICATOR_START:
+                li.append(val)
+                val = stack.pop()
+            li.reverse()
+            accessor = int(li[0])
+            for application in li[1:]:
+                apply(application, accessor)
+            stack.append(data[accessor])
+        elif token == CONDITIONAL_END:
+            li = []
+            val = stack.pop()
+            while (val != CONDITIONAL_START):
+                li.append(val)
+                val = stack.pop()
+            li.reverse()
+            accessor = int(li[0])
+            for application in li[1:]:
+                apply(application, accessor)
+            if data[accessor] != 0:
+                index = loop_index_stack.pop()
+                continue
+        elif token == CONDITIONAL_START:
+            loop_index_stack.append(index)
+            stack.append(token)
+        else:
+            stack.append(token)
+        index += 1
 
-def compile(self, out):
-    pass
 
 def main():
 
