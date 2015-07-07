@@ -128,6 +128,19 @@ def run(tokens):
         else:
             data[accessor] = int(application)
 
+    def push(token, index):
+        try:
+            value = int(token)
+            if len(stack) > 0 and data[value] == 0 and stack[-1] == CONDITIONAL_START:
+                stack.pop()
+                while tokens[index] != CONDITIONAL_END:
+                    index += 1
+            else:
+                stack.append(token)
+        except:
+            stack.append(token)
+        return index
+
     # The memory we are working with.
     data = [0] * (DATA_SIZE + 1)
 
@@ -147,17 +160,14 @@ def run(tokens):
             accessor = int(li[0])
             for application in li[1:]:
                 apply(application, accessor)
-            stack.append(data[accessor])
+            index = push(accessor, index)
         elif token == CONDITIONAL_END:
             li = []
             val = stack.pop()
             while (val != CONDITIONAL_START):
                 li.append(val)
                 val = stack.pop()
-            li.reverse()
-            accessor = int(li[0])
-            for application in li[1:]:
-                apply(application, accessor)
+            accessor = int(li[-1])
             if data[accessor] != 0:
                 index = loop_index_stack.pop()
                 continue
@@ -165,9 +175,65 @@ def run(tokens):
             loop_index_stack.append(index)
             stack.append(token)
         else:
-            stack.append(token)
+            index = push(token, index)
         index += 1
 
+def compile(tokens, out_file):
+    def apply(application, accessor):
+        ele = 'd[' + accessor + ']';
+        if application == NOP:
+            pass
+        elif application == INCREMENT:
+            output.append(ele + '++;')
+        elif application == DECREMENT:
+            output.append(ele + '--;')
+        elif application == OUTPUT:
+            output.append('putchar(' + ele + ');')
+        elif application == INPUT:
+            output.append(ele + ' = getchar();')
+        else:
+            output.append(ele + ' = ' + application + ';')
+
+    output = ['#include <stdio.h>\n#include <stdlib.h>\n']
+    output.append('int main() {')
+    output.append('unsigned char *d = (unsigned char *)calloc('
+            + str(DATA_SIZE) + ', 1);')
+
+    stack = []
+
+    for token in tokens:
+        if token == APPLICATOR_END:
+            li = []
+            val = stack.pop()
+            while val != APPLICATOR_START:
+                li.append(val)
+                val = stack.pop()
+            li.reverse()
+            accessor = li[0]
+            for application in li[1:]:
+                apply(application, accessor)
+            if len(stack) > 0 and stack[-1] == CONDITIONAL_START:
+                output.append('if(!d[' + accessor + ']){break;}')
+            stack.append('d[' + accessor + ']')
+        elif token == CONDITIONAL_END:
+            val = stack.pop()
+            while val != CONDITIONAL_START:
+                val = stack.pop()
+            output.append('}')
+        elif token == CONDITIONAL_START:
+            output.append('while(1){')
+            stack.append(token)
+        elif token == APPLICATOR_START:
+            stack.append(token)
+        else:
+            # Check if the token is the accessor for a conditional.
+            if len(stack) > 0 and stack[-1] == CONDITIONAL_START:
+                output.append('if(!d[' + token + ']){break;}')
+            stack.append(token)
+
+    output.append('return 0;\n}')
+    with open(out_file, 'w') as out:
+        out.write('\n'.join(output))
 
 def main():
 
@@ -177,7 +243,8 @@ def main():
 
     tokens = preprocess(args.src)
     if len(tokens) > 0:
-        run(tokens)
+        #run(tokens)
+        compile(tokens, 'out.c')
 
 if __name__ == '__main__':
     main()
