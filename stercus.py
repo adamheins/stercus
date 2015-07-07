@@ -4,9 +4,91 @@ import argparse
 import re
 import sys
 
+# Size of data available to the program (in bytes).
+DATA_SIZE = 10000
+
+# Brackets.
+APPLICATOR_START = '['
+APPLICATOR_END = ']'
+CONDITIONAL_START = '('
+CONDITIONAL_END = ')'
+
+# Comments.
+SINGLE_LINE_COMMENT_DELIMITER = '#'
+MULTI_LINE_COMMENT_DELIMITER = '##'
+
+# Built-in applications.
+INCREMENT = '+'
+DECREMENT = '-'
+OUTPUT = '.'
+INPUT = ','
+NOP = '_'
+
+class AddressOutOfRangeError(Exception):
+    """ Raised when the program attempted to access an address outside the range
+        of STERCUS_DATA_SIZE. """
+    pass
+
+class UnbalancedBracketsError(Exception):
+    """ Raised when the program has an unbalanced number of brackets. """
+    pass
+
 
 def preprocess(src_file):
     """ Preprocessing step """
+
+    def remove_comments(src):
+        """ Remove multiline and single line comments from the source code. """
+        MULTI_LINE_COMMENT_RULE = re.compile(MULTI_LINE_COMMENT_DELIMITER
+                + '.*?' + MULTI_LINE_COMMENT_DELIMITER, re.M | re.S)
+        SINGLE_LINE_COMMENT_RULE = re.compile(SINGLE_LINE_COMMENT_DELIMITER
+                + '.*?$', re.M)
+
+        src = re.sub(MULTI_LINE_COMMENT_RULE, '', src)
+        src = re.sub(SINGLE_LINE_COMMENT_RULE, '', src)
+        return src
+
+    def check_bracket_balance(src):
+        """ Check to ensure that brackets are correctly balanced in the source
+            code. """
+        applicator_count = 0
+        conditional_count = 0
+        prev_open = ''
+        for c in src:
+            if c == APPLICATOR_START:
+                prev_open = APPLICATOR_START
+                applicator_count += 1
+            elif c == APPLICATOR_END:
+                if prev_open == CONDITIONAL_START:
+                    raise UnbalancedBracketsError('Mismatched brackets.')
+                prev_open = ''
+                applicator_count -= 1
+            elif c == CONDITIONAL_START:
+                prev_open = CONDITIONAL_START
+                conditional_count += 1
+            elif c == CONDITIONAL_END:
+                if prev_open == APPLICATOR_START:
+                    raise UnbalancedBracketsError('Mismatched brackets.')
+                prev_open = ''
+                conditional_count -= 1
+
+            # Net bracket count must not be below 0 for either bracket type at
+            # any time.
+            if applicator_count < 0:
+                raise UnbalancedBracketsError('Applicator brackets are not '
+                        'balanced.')
+            if conditional_count < 0:
+                raise UnbalancedBracketsError('Conditional brackets are not '
+                        'balanced.')
+
+        # Final net count of each bracket type must be 0.
+        if applicator_count != 0:
+            raise UnbalancedBracketsError('Applicator brackets are not '
+                    'balanced.')
+        if conditional_count != 0:
+            raise UnbalancedBracketsError('Conditional brackets are not '
+                    'balanced.')
+
 
     # Preprocessing rules.
     PREPROCESS_RULES = {
@@ -15,15 +97,13 @@ def preprocess(src_file):
             ' ( ': re.compile('(\s*)\((\s*)'),
             ' ) ': re.compile('(\s*)\)(\s*)'),
     }
-    MULTI_LINE_COMMENT_RULE = re.compile('##.*?##', re.M | re.S)
-    SINGLE_LINE_COMMENT_RULE = re.compile('#.*?$', re.M)
 
     with open(src_file, 'r') as f:
         src = f.read()
 
-    # Strip comments.
-    src = re.sub(MULTI_LINE_COMMENT_RULE, '', src)
-    src = re.sub(SINGLE_LINE_COMMENT_RULE, '', src)
+    src = remove_comments(src)
+
+    check_bracket_balance(src)
 
     # Add space between all tokens.
     for key, val in PREPROCESS_RULES.iteritems():
@@ -37,20 +117,9 @@ def preprocess(src_file):
 def run(tokens):
     """ Run the program. """
 
-    APPLICATOR_START = '['
-    APPLICATOR_END = ']'
-    CONDITIONAL_START = '('
-    CONDITIONAL_END = ')'
-
-    # Built-in applications.
-    INCREMENT = '+'
-    DECREMENT = '-'
-    OUTPUT = '.'
-    INPUT = ','
-    NOP = '_'
 
     # The memory we are working with.
-    data = [0] * 10000
+    data = [0] * (DATA_SIZE + 1)
 
     def apply(value, accessor):
         if value == NOP:
@@ -67,18 +136,34 @@ def run(tokens):
             return False
         return True
 
+    def accessor_is_nop(accessor):
+        return accessor == DATA_SIZE
+
+    def accessor_nop():
+        return DATA_SIZE
+
+    def get_accessor(tokens, index):
+        accessor, index = expression(tokens, index)
+        if accessor == NOP:
+            accessor = accessor_nop()
+        else:
+            accessor = int(accessor)
+            if accessor >= DATA_SIZE:
+                raise AddressOutOfRangeError('Attempted to access address '
+                        'larger than STERCUS_DATA_SIZE')
+        return accessor, index
 
     def expression(tokens, start):
-        if tokens[start] == APPLICATOR_START:
+        token = tokens[start]
+        if token == APPLICATOR_START:
             return applicator(tokens, start + 1)
-        if tokens[start] == CONDITIONAL_START:
+        if token == CONDITIONAL_START:
             return conditional(tokens, start + 1)
-        return tokens[start], start + 1
+        return token, start + 1
 
     def applicator(tokens, start):
         """ Parse an applicator block. """
-        accessor, index = expression(tokens, start)
-        accessor = int(accessor)
+        accessor, index = get_accessor(tokens, start)
 
         while index < len(tokens):
             value, index = expression(tokens, index)
@@ -92,8 +177,7 @@ def run(tokens):
 
     def conditional(tokens, start):
         """ Parse a conditional block. """
-        accessor, index = expression(tokens, start)
-        accessor = int(accessor)
+        accessor, index = get_accessor(tokens, start)
 
         loop_start = index
         while data[accessor] != 0:
