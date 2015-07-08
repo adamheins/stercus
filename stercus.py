@@ -213,7 +213,7 @@ def compile(tokens, out_file):
             for application in li[1:]:
                 apply(application, accessor)
             if len(stack) > 0 and stack[-1] == CONDITIONAL_START:
-                output.append('if(!d[' + accessor + ']){break;}')
+                output.append('if(!d[d[' + accessor + ']]){break;}')
             stack.append('d[' + accessor + ']')
         elif token == CONDITIONAL_END:
             val = stack.pop()
@@ -239,12 +239,17 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('src', help='Stercus source file.')
+    parser.add_argument('-c', '--compile', help='Compile the stercus file to C,'
+                        ' rather than interpreting it.', dest='compile',
+                        action='store_true')
     args = parser.parse_args()
 
     tokens = preprocess(args.src)
     if len(tokens) > 0:
-        #run(tokens)
-        compile(tokens, 'out.c')
+        if args.compile:
+            compile(tokens, 'out.c')
+        else:
+            run(tokens)
 
 if __name__ == '__main__':
     main()

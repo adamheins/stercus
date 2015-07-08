@@ -1,0 +1,8 @@
+# Example stercus program
+
+# Double the value entered by the user.
+[0 , .]
+(0
+  [2 + +]
+[0 -])
+[2 .]

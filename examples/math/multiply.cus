@@ -1,0 +1,12 @@
+# Multiply two values. Note that since each stercus position is a byte of
+# memory, this multiplication algorithm will only work correctly when the
+# result is less than 256.
+[0 ,]
+[1 ,]
+(0
+  [2 [1]]
+  (2
+    [3 +]
+  [2 -])
+[0 -])
+[3 .]
