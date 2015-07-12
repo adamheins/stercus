@@ -5,6 +5,10 @@ import re
 import sys
 from subprocess import call
 
+from stercus import *
+from stercus import preprocessor, lexer, parser
+
+"""
 # Size of data available to the program (in bytes).
 DATA_SIZE = 10000
 
@@ -13,6 +17,9 @@ APPLICATOR_START = '['
 APPLICATOR_END = ']'
 CONDITIONAL_START = '('
 CONDITIONAL_END = ')'
+APPLICATION_START = '{'
+APPLICATION_END = '{'
+
 
 # Comments.
 SINGLE_LINE_COMMENT_DELIMITER = '#'
@@ -24,6 +31,7 @@ DECREMENT = '-'
 OUTPUT = '.'
 INPUT = ','
 NOP = '_'
+"""
 
 class AddressOutOfRangeError(Exception):
     """ Raised when the program attempted to access an address outside the range
