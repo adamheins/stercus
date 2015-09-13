@@ -73,6 +73,7 @@ def compile_main(tokens, func_list):
     output = 'int main(void) {'
     output += 'd0=(unsigned char *)calloc(' + str(DATA_SIZE) + ', 1);'
     output += compile_body(tokens, func_list)
+    output += 'free(d0);'
     output += 'return 0;}'
     return output
 

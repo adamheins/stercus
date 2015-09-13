@@ -1,0 +1,2 @@
+# This test file consists of just comments.
+# The resulting C file should not do anything.

@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# Converts an ascii string into the equivalent expression for output in stercus.
+
 import argparse
 
 def parse(text):
