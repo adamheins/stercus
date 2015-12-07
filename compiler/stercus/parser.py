@@ -22,9 +22,10 @@ def check_brackets(tokens):
 
             # Applications must not be nested within any expressions.
             if token == '{':
-                if counts['('] > 0 or counts['['] > 0:
-                    raise UnbalancedBracketsError('Application definitions must'
-                            ' not be nested within any expressions.')
+                for _, count in counts.items():
+                    if count > 0:
+                        raise UnbalancedBracketsError('Application definitions'
+                                ' must not be nested within any expressions.')
             counts[token] += 1
         elif token in BRACKETS['CLOSE']:
 
@@ -39,7 +40,7 @@ def check_brackets(tokens):
             # The opening and closing brackets must match.
             if BRACKETS['PAIRS'][opening] != token:
                 raise UnbalancedBracketsError('Opening and closing brackets do'
-                        'not match.')
+                        ' not match.')
             counts[opening] -= 1
 
 def check_function_name(name):
@@ -77,8 +78,11 @@ def parse_functions(tokens):
 def parse(tokens):
     """ Parse the Stercus tokens into separate applications. """
     check_brackets(tokens)
+    # Replace the '$' because that is not a valid variable name in C.
     tokens = ['s0' if token == '$' else token for token in tokens]
-    tokens = ['main0' if token == 'main' else token for token in tokens]
+    for token in tokens:
+        if token == 'main':
+            raise FunctionNameError("Application named 'main' is not allowed.")
     return parse_functions(tokens)
 
 def main():
