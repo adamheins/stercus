@@ -55,13 +55,13 @@ class ParserTestInvalid(unittest.TestCase):
     def test_parse_custom_application_named_main(self):
         # {main [$ +]}
         tokens = ['{', 'main', '[', '$', '+', ']', '}']
-        with self.assertRaises(errors.FunctionNameError):
+        with self.assertRaises(errors.ApplicationNameError):
             parser.parse(tokens)
 
     def test_parse_custom_application_starts_with_num(self):
         # {1 [$ +]}
         tokens = ['{', '1', '[', '$', '+', ']', '}']
-        with self.assertRaises(errors.FunctionNameError):
+        with self.assertRaises(errors.ApplicationNameError):
             parser.parse(tokens)
 
     def test_parse_custom_application_nested(self):

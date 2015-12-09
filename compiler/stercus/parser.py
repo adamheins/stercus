@@ -43,37 +43,37 @@ def check_brackets(tokens):
                         ' not match.')
             counts[opening] -= 1
 
-def check_function_name(name):
-    """ Check if the function name is valid. """
-    # Functions names may only contain letters and underscores.
+def check_application_name(name):
+    """ Check if the application name is valid. """
+    # Application names may only contain letters and underscores.
     for char in name:
         if char not in ascii_letters and char != '_':
-            raise FunctionNameError('Unacceptable function name: ' + name
-                    + '. Function names may only contain letters.')
+            raise ApplicationNameError('Invalid application name: ' + name
+                    + '. Application names may only contain letters.')
 
-def parse_functions(tokens):
-    """ Parse the functions in the program. """
-    functions = {}
+def parse_applications(tokens):
+    """ Parse the applications in the program. """
+    applications = {}
     open_index = 0
     index = 0
     while index < len(tokens):
         if tokens[index] == APPLICATION['OPEN']:
             open_index = index
         elif tokens[index] == APPLICATION['CLOSE']:
-            # Check the function name.
-            func_name = tokens[open_index + 1]
-            check_function_name(func_name)
+            # Check the application name.
+            app_name = tokens[open_index + 1]
+            check_application_name(app_name)
 
-            # Add the function to the function table.
-            functions[func_name] = tokens[open_index + 2:index]
+            # Add the application to the application table.
+            applications[app_name] = tokens[open_index + 2:index]
 
-            # Remove the function body from the tokens.
+            # Remove the application body from the tokens.
             tokens = tokens[:open_index] + tokens[index + 1:]
             index = open_index
             continue
         index += 1
-    functions['main'] = tokens
-    return functions
+    applications['main'] = tokens
+    return applications
 
 def parse(tokens):
     """ Parse the Stercus tokens into separate applications. """
@@ -82,8 +82,9 @@ def parse(tokens):
     tokens = ['s0' if token == '$' else token for token in tokens]
     for token in tokens:
         if token == 'main':
-            raise FunctionNameError("Application named 'main' is not allowed.")
-    return parse_functions(tokens)
+            raise ApplicationNameError("Application named 'main' is not"
+                                       " allowed.")
+    return parse_applications(tokens)
 
 def main():
     """ Run the parser as an independent program. """
@@ -98,12 +99,12 @@ def main():
         tokens = f.read().split()
 
     # Output the result.
-    functions = parse(tokens)
+    applications = parse(tokens)
     if args.out:
         with open(args.out, 'w') as f:
-            json.dump(functions, f)
+            json.dump(applications, f)
     else:
-        print functions
+        print applications
 
 if __name__ == '__main__':
     main()

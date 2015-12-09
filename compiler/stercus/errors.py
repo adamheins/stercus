@@ -9,6 +9,6 @@ class UnbalancedBracketsError(Exception):
     """ Raised when the program has an unbalanced number of brackets. """
     pass
 
-class FunctionNameError(Exception):
-    """ Raised when a disallowed function name is encountered. """
+class ApplicationNameError(Exception):
+    """ Raised when a disallowed application name is encountered. """
     pass
