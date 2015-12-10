@@ -61,20 +61,22 @@ def compile_body(tokens, func_list):
             stack.append(token)
     return '\n'.join(output)
 
-def compile_application(name, tokens, func_list):
+def compile_application(name, tokens, app_list):
     """ Compile a function from stercus to C. """
-    output = 'void ' + name + '(unsigned int s0) {'
-    output += compile_body(tokens, func_list)
-    output += '}'
-    return output
+    declaration = 'void ' + name + '(unsigned int s0)'
+    body = '\n'.join([declaration + '{',
+                      compile_body(tokens, app_list),
+                      '}\n'])
+    return declaration + ';\n', body
 
-def compile_main(tokens, func_list):
+def compile_main(tokens, app_table):
     """ Compile the main C function. """
-    output = 'int main(void) {'
-    output += 'd0=(unsigned char *)calloc(' + str(DATA_SIZE) + ', 1);'
-    output += compile_body(tokens, func_list)
-    output += 'free(d0);'
-    output += 'return 0;}'
+    output = '\n'.join(['int main(void) {',
+                        'd0=(unsigned char *)calloc(' + str(DATA_SIZE) + ', 1);',
+                        compile_body(tokens, app_table),
+                        'free(d0);',
+                        'return 0;',
+                        '}'])
     return output
 
 def compile(applications):
@@ -85,13 +87,23 @@ def compile(applications):
     main_appl = applications['main']
     applications.pop('main')
 
-    # Initial C boilerplate.
-    c_src = '#include <stdio.h>\n#include <stdlib.h>\nunsigned char *d0;'
+    app_declarations = []
+    app_bodies = []
 
     # Compile applications into C functions.
-    for app in applications:
-        c_src += compile_application(app, applications[app],
-                applications.keys())
+    for name, content in applications.items():
+        body, declaration = compile_application(name, content,
+                                                applications.keys())
+        app_bodies.append(body)
+        app_declarations.append(declaration)
+
+    # Initial C boilerplate.
+    c_src = '\n'.join(['#include <stdio.h>',
+                       '#include <stdlib.h>',
+                       'unsigned char *d0;\n'])
+
+    c_src += '\n'.join(app_bodies)
+    c_src += '\n'.join(app_declarations)
 
     # Compile the main function.
     c_src += compile_main(main_appl, applications.keys())
