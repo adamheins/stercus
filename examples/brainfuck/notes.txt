@@ -1,0 +1,15 @@
+Brainfuck Notes
+
+Assuming 0 is used as the instruction pointer, we have the following
+translation. However, the looping construct would need to use incrementing
+variables to ensure that the same one isn't being used for a loop nested
+within another.
+BF Stercus
+.  [[0] .]
+,  [[0] ,]
++  [[0] +]
+-  [[0] -]
+>  [0 +]
+<  [0 -]
+(  [1 1]([1]
+)  [1 [0]])
