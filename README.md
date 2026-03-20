@@ -1,10 +1,9 @@
 # Stercus
 Stercus is a simple language. Programs are written to operate on a pre-defined
-block of memory, similar to brainfuck. The memory block is arbitrarily-sized;
-the current compiler uses a block of 10,000 bytes.
+block of memory, similar to brainfuck. The memory block is arbitrarily-sized
+and can be set when compiling a program.
 
-Stercus is also ridiculous. It is esoteric and creating a program of any
-notable size is very diffcult. However, it does provide an interesting
+Stercus is very simple and impractical, and therefore provides an interesting
 challenge: create a meaningful program with an _extremely_ limited toolset. The
 word "meaningful" is being used loosely here.
 
@@ -64,19 +63,13 @@ passed the location of the byte in memory on which they are acting.
 ### Built-in Applications
 The built-in applications are:
 
-`<number>`: A number from 0 to 127. Assigns the byte in the memory to the value
-of the number. Attempting to use a number outside of 0 to 127 results in
-undefined behaviour.
-
-`.`: Output the value stored in this memory location as an int.
-
-`:`: Output the value stored in this memory location as a char.
-
-`,`: Input a value and store it in this memory location.
-
-`+`: Increment the value stored in this memory location.
-
-`-`: Decrement the value stored in this memory location.
+* `<number>`: A signed 8-bit value; that is, number from -128 to 127. Assigns
+  the byte in the memory to the value of the number.
+* `.`: Output the value stored in this memory location as an int.
+* `:`: Output the value stored in this memory location as a char.
+* `,`: Input a value and store it in this memory location.
+* `+`: Increment the value stored in this memory location.
+* `-`: Decrement the value stored in this memory location.
 
 ### Custom Applications
 Custom applications are denoted by curly brackets (`{}`). The application takes
@@ -114,9 +107,19 @@ One use of custom applications is to create named values:
 
 ## Compilation
 Stercus files typically end with a `.cus` extension. Stercus files can be
-compiled using the `stercusc` executable in the `compiler/` directory. The
-compiler produces C source files, which can then be compiled with your C
-compiler of choice.
+compiled using the `stercusc` executable installed with this package. By
+default, the compiler produces C source files, which can then be compiled with
+your C compiler of choice. You can use the `-c` flag to pass a C compiler
+command to automatically compile the C code as well. Examples:
+```
+stercusc example.cus  # produces `example.c`
+
+# use a memory array of 100 bytes (default is 10,000)
+stercusc example.cus -m 100
+
+# compile the C code as well (assuming you have gcc installed)
+stercusc example.cus -c gcc  # produces `example` binary
+```
 
 ## Tools
 Additional tools may be found in the `tools/` directory.

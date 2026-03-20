@@ -9,6 +9,9 @@ from .constants import *
 from .errors import *
 
 
+APP_NAME_CHARS = ascii_letters + "_"
+
+
 def check_brackets(tokens):
     counts = {b: 0 for b in BRACKETS["OPEN"]}
     openings = []
@@ -48,7 +51,7 @@ def check_application_name(name):
     """Check if the application name is valid."""
     # Application names may only contain letters and underscores.
     for char in name:
-        if char not in ascii_letters and char != "_":
+        if char not in APP_NAME_CHARS:
             raise ApplicationNameError(
                 "Invalid application name: "
                 + name
@@ -84,8 +87,7 @@ def parse_applications(tokens):
 def parse(tokens):
     """Parse the Stercus tokens into separate applications."""
     check_brackets(tokens)
-    # Replace the '$' because that is not a valid variable name in C.
-    tokens = [C_FUNC_ARG_NAME if token == "$" else token for token in tokens]
+    tokens = [C_FUNC_ARG_NAME if token == STERCUS_ARG_NAME else token for token in tokens]
     for token in tokens:
         if token == "main":
             raise ApplicationNameError(

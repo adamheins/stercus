@@ -2,6 +2,7 @@
 
 C_DATA_ARRAY_NAME = "_STERCUS_DATA"
 C_FUNC_ARG_NAME = "s0"
+STERCUS_ARG_NAME = "$"
 
 
 # Brackets.
