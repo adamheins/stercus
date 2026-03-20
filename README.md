@@ -117,8 +117,12 @@ stercusc example.cus  # produces `example.c`
 # use a memory array of 100 bytes (default is 10,000)
 stercusc example.cus -m 100
 
-# compile the C code as well (assuming you have gcc installed)
+# compile the C code as well (assuming you have gcc installed):
 stercusc example.cus -c gcc  # produces `example` binary
+
+# the above command is equivalent to:
+stercusc example.cus
+gcc example.c -o example
 ```
 
 ## Tools
