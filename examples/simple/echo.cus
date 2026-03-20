@@ -1,2 +1,13 @@
-# The program takes a character as input and prints it back out.
-[0 , .]
+# This program prints back out the first CLI argument.
+
+# use byte 100 as a counting variable
+[100 0]
+
+# print bytes until a NULL is reached
+([100]
+  [[100] :]
+  [100 +]
+)
+
+# also output a newline (10 is ascii newline code)
+[0 10 :]

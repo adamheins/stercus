@@ -1,0 +1,172 @@
+#!/usr/bin/env python
+""" Stercus Language Compiler """
+
+import argparse
+import json
+from textwrap import dedent
+
+from .constants import *
+
+C_HEADER = f"""
+#include <stdio.h>
+#include <stdlib.h>
+
+char *{C_DATA_ARRAY_NAME};
+
+// copy the CLI args into the main data array
+void copy_cli_args(int argc, char* argv[]) {{
+  int d_idx = 0;
+  for (int c = 1; c < argc; ++c) {{
+    int arg_idx = 0;
+    while (argv[c][arg_idx]) {{
+      {C_DATA_ARRAY_NAME}[d_idx] = argv[c][arg_idx];
+      ++arg_idx;
+      ++d_idx;
+    }}
+
+    // add space between args
+    if (c < argc - 1) {{
+        {C_DATA_ARRAY_NAME}[d_idx] = ' ';
+      ++d_idx;
+    }}
+  }}
+}}
+""".strip()
+
+
+def apply(output, application, accessor, func_list):
+    """Apply an application to the accessed location."""
+    ele = f"{C_DATA_ARRAY_NAME}[{accessor}]"
+    if application == NOP:
+        pass
+    elif application == INCREMENT:
+        output.append(ele + "++;")
+    elif application == DECREMENT:
+        output.append(ele + "--;")
+    elif application == OUTPUT_INT:
+        output.append(f'printf("%d", {ele});')
+    elif application == OUTPUT_CHAR:
+        output.append(f"putchar({ele});")
+    elif application == INPUT:
+        output.append(f"{ele} = getchar();")
+    elif application in func_list:
+        output.append(f"{application}({accessor});")
+    else:
+        output.append(f"{ele} = {application};")
+
+
+def compile_body(tokens, func_list):
+    output = []
+    stack = []
+    for token in tokens:
+        if token == APPLICATOR["CLOSE"]:
+            li = []
+            val = stack.pop()
+            while val != APPLICATOR["OPEN"]:
+                li.append(val)
+                val = stack.pop()
+            li.reverse()
+            accessor = li[0]
+            for application in li[1:]:
+                apply(output, application, accessor, func_list)
+            if len(stack) > 0 and stack[-1] == CONDITIONAL["OPEN"]:
+                output.append(
+                    f"if(!{C_DATA_ARRAY_NAME}[{C_DATA_ARRAY_NAME}[{accessor}]]){{break;}}"
+                )
+            stack.append(f"{C_DATA_ARRAY_NAME}[{accessor}]")
+        elif token == CONDITIONAL["CLOSE"]:
+            val = stack.pop()
+            while val != CONDITIONAL["OPEN"]:
+                val = stack.pop()
+            output.append("}")
+        elif token == CONDITIONAL["OPEN"]:
+            output.append("while(1){")
+            stack.append(token)
+        elif token == APPLICATOR["OPEN"]:
+            stack.append(token)
+        else:
+            # Check if the token is the accessor for a conditional.
+            if len(stack) > 0 and stack[-1] == CONDITIONAL["OPEN"]:
+                output.append(f"if(!{C_DATA_ARRAY_NAME}[{token}]){{break;}}")
+            stack.append(token)
+    return "\n".join(output)
+
+
+def compile_application(name, tokens, app_list):
+    """Compile a function from stercus to C."""
+    declaration = (
+        f"void {name}(char {C_FUNC_ARG_NAME})"
+    )
+    body = compile_body(tokens, app_list)
+    definition = f"{declaration} {{\n{body}}}\n"
+    return f"{declaration};\n", definition
+
+
+def compile_main(tokens, app_table, memory_size):
+    """Compile the main C function."""
+    body = compile_body(tokens, app_table)
+    output = f"""
+    int main(int argc, char* argv[]) {{
+      {C_DATA_ARRAY_NAME} = (char *)calloc({memory_size}, sizeof(char));
+      copy_cli_args(argc, argv);
+      {body}
+      free({C_DATA_ARRAY_NAME});
+      return 0;
+    }}
+    """
+    return dedent(output).strip()
+
+
+def compile(applications, memory_size):
+    """Compile the Stercus function table to C."""
+
+    # Save and remove the main function, as it must be placed at the end of the
+    # generated C code.
+    main_appl = applications["main"]
+    applications.pop("main")
+
+    app_declarations = []
+    app_bodies = []
+
+    # Compile applications into C functions.
+    for name, content in applications.items():
+        body, declaration = compile_application(
+            name, content, applications.keys()
+        )
+        app_bodies.append(body)
+        app_declarations.append(declaration)
+
+    # Initial C boilerplate.
+    c_src = C_HEADER
+    c_src += "\n".join(app_bodies)
+    c_src += "\n".join(app_declarations)
+
+    # Compile the main function.
+    c_src += compile_main(main_appl, applications.keys(), memory_size)
+    return c_src
+
+
+def main():
+    """Run the compiler as an independent program."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("src", help="Stercus source file.")
+    parser.add_argument(
+        "-o", "--output", help="Output file for compiled" " result.", dest="out"
+    )
+    args = parser.parse_args()
+
+    # Tokens are read from a whitespace-separated list in a file.
+    with open(args.src, "r") as f:
+        applications = json.load(f)
+
+    # Output the result.
+    c_src = compile(applications)
+    if args.out:
+        with open(args.out, "w") as f:
+            f.write(c_src)
+    else:
+        print(c_src)
+
+
+if __name__ == "__main__":
+    main()

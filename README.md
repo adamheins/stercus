@@ -68,7 +68,9 @@ The built-in applications are:
 of the number. Attempting to use a number outside of 0 to 127 results in
 undefined behaviour.
 
-`.`: Output the value stored in this memory location.
+`.`: Output the value stored in this memory location as an int.
+
+`:`: Output the value stored in this memory location as a char.
 
 `,`: Input a value and store it in this memory location.
 
@@ -92,9 +94,23 @@ not be reassigned.
 {foo [$ + +]}
 ```
 
-The ordering of applications in a file does not matter. Applications can
-reference other applications that are declared textually beneath them in the
-file.
+The ordering of applications in a file does not matter: applications can
+reference any other applications in the same file.
+
+#### Variables
+
+One use of custom applications is to create named values:
+```
+# assign 'a' to have a value 5
+{a [$ 5]}  
+
+# now I can assign the value of 'a' to other bytes
+# e.g., assign the value of 'a' (5) to byte 3:
+[3 a]
+
+# I can also assign the value of 'a' to other "variables":
+{b [$ a]}
+```
 
 ## Compilation
 Stercus files typically end with a `.cus` extension. Stercus files can be

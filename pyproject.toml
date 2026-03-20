@@ -1,0 +1,22 @@
+[project]
+name = "stercus"
+version = "0.1.0"
+description = "The silly Stercus programming language."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+stercusc = "stercus.stercusc:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.black]
+line-length = 80
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+]

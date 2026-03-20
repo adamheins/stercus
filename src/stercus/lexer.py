@@ -3,7 +3,7 @@
 
 import argparse
 
-from constants import BRACKETS
+from .constants import BRACKETS
 
 def lex(src):
     """ Convert the Stercus source code into a list of tokens. """
@@ -31,7 +31,7 @@ def main():
         with open(args.out, 'w') as f:
             f.write(' '.join(tokens))
     else:
-        print ' '.join(tokens)
+        print(' '.join(tokens))
 
 if __name__ == '__main__':
     main()
