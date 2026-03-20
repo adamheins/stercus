@@ -8,6 +8,7 @@ dependencies = []
 
 [project.scripts]
 stercusc = "stercus.stercusc:main"
+text2stercus = "stercus.text2stercus:main"
 
 [build-system]
 requires = ["hatchling"]

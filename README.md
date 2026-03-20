@@ -126,9 +126,9 @@ gcc example.c -o example
 ```
 
 ## Tools
-Additional tools may be found in the `tools/` directory.
-* text2stercus.py: Convert text to the stercus expression for outputting that
-  string of text.
+
+* The `text2stercus` executable convert text to the stercus expression for
+  outputting that string of text.
 
 ## Examples
 Additional example stercus programs may be found in the `examples/` directory.
