@@ -6,32 +6,58 @@ import json
 from textwrap import dedent
 
 from .constants import *
+from .errors import *
 
-C_HEADER = f"""
-#include <stdio.h>
-#include <stdlib.h>
 
-char *{C_DATA_ARRAY_NAME};
+def c_header(memory_size):
+    return dedent(
+        f"""
+    #include <stdio.h>
+    #include <stdlib.h>
 
-// copy the CLI args into the main data array
-void copy_cli_args(int argc, char* argv[]) {{
-  int d_idx = 0;
-  for (int c = 1; c < argc; ++c) {{
-    int arg_idx = 0;
-    while (argv[c][arg_idx]) {{
-      {C_DATA_ARRAY_NAME}[d_idx] = argv[c][arg_idx];
-      ++arg_idx;
-      ++d_idx;
+    const size_t {C_DATA_ARRAY_SIZE_NAME} = {memory_size};
+    char *{C_DATA_ARRAY_NAME};
+
+    int {C_GET_BYTE_NAME}(int i) {{
+        if (i < {C_DATA_ARRAY_SIZE_NAME}) {{
+            return {C_DATA_ARRAY_NAME}[i];
+        }} else {{
+            fprintf(stderr, "attempted out of bounds access to index %d\\n", i);
+            return 0;
+        }}
     }}
 
-    // add space between args
-    if (c < argc - 1) {{
-        {C_DATA_ARRAY_NAME}[d_idx] = ' ';
-      ++d_idx;
+    int {C_SET_BYTE_NAME}(int i, char value) {{
+        if (i < {C_DATA_ARRAY_SIZE_NAME}) {{
+            {C_DATA_ARRAY_NAME}[i] = value;
+        }} else {{
+            fprintf(stderr, "attempted out of bounds access to index %d\\n", i);
+            return 0;
+        }}
     }}
-  }}
-}}
-""".strip()
+
+    // copy the CLI args into the main data array
+    void _stercus_copy_cli_args(int argc, char* argv[], int max_bytes) {{
+      int d_idx = 0;
+      for (int c = 1; c < argc; ++c) {{
+        int arg_idx = 0;
+        while (argv[c][arg_idx]) {{
+          {C_DATA_ARRAY_NAME}[d_idx] = argv[c][arg_idx];
+          ++arg_idx;
+          ++d_idx;
+        }}
+        if (d_idx >= max_bytes) {{ return; }}
+
+        // add space between args
+        if (c < argc - 1) {{
+            {C_DATA_ARRAY_NAME}[d_idx] = ' ';
+          ++d_idx;
+        }}
+        if (d_idx >= max_bytes) {{ return; }}
+      }}
+    }}
+    """
+    ).strip()
 
 
 def apply(output, application, accessor, func_list):
@@ -40,22 +66,28 @@ def apply(output, application, accessor, func_list):
     if application == NOP:
         pass
     elif application == INCREMENT:
-        output.append(ele + "++;")
+        # output.append(ele + "++;")
+        output.append(
+            f"{C_SET_BYTE_NAME}({accessor}, {C_GET_BYTE_NAME}({accessor}) + 1);"
+        )
     elif application == DECREMENT:
-        output.append(ele + "--;")
+        # output.append(ele + "--;")
+        output.append(
+            f"{C_SET_BYTE_NAME}({accessor}, {C_GET_BYTE_NAME}({accessor}) - 1);"
+        )
     elif application == OUTPUT_INT:
-        output.append(f'printf("%d", {ele});')
+        output.append(f'printf("%d", {C_GET_BYTE_NAME}({accessor}));')
     elif application == OUTPUT_CHAR:
-        output.append(f"putchar({ele});")
+        output.append(f"putchar({C_GET_BYTE_NAME}({accessor}));")
     elif application == INPUT:
-        output.append(f"{ele} = getchar();")
+        output.append(f"{C_SET_BYTE_NAME}({accessor}, getchar());")
     elif application in func_list:
         output.append(f"{application}({accessor});")
     else:
-        output.append(f"{ele} = {application};")
+        output.append(f"{C_SET_BYTE_NAME}({accessor}, {application});")
 
 
-def compile_body(tokens, func_list):
+def compile_body(tokens, func_list, memory_size=None):
     output = []
     stack = []
     for token in tokens:
@@ -66,14 +98,27 @@ def compile_body(tokens, func_list):
                 li.append(val)
                 val = stack.pop()
             li.reverse()
+
             accessor = li[0]
+
+            # compile-time bounds checking
+            if memory_size is not None:
+                try:
+                    idx = int(accessor)
+                    if idx >= memory_size:
+                        raise IndexOutOfRangeError(
+                            f"attempted out of bounds access to index {idx}; aborting"
+                        )
+                except ValueError:
+                    pass
+
             for application in li[1:]:
                 apply(output, application, accessor, func_list)
             if len(stack) > 0 and stack[-1] == CONDITIONAL["OPEN"]:
                 output.append(
-                    f"if(!{C_DATA_ARRAY_NAME}[{C_DATA_ARRAY_NAME}[{accessor}]]){{break;}}"
+                    f"if(!{C_GET_BYTE_NAME}({C_GET_BYTE_NAME}({accessor}))){{break;}}"
                 )
-            stack.append(f"{C_DATA_ARRAY_NAME}[{accessor}]")
+            stack.append(f"{C_GET_BYTE_NAME}({accessor})")
         elif token == CONDITIONAL["CLOSE"]:
             val = stack.pop()
             while val != CONDITIONAL["OPEN"]:
@@ -87,28 +132,29 @@ def compile_body(tokens, func_list):
         else:
             # Check if the token is the accessor for a conditional.
             if len(stack) > 0 and stack[-1] == CONDITIONAL["OPEN"]:
-                output.append(f"if(!{C_DATA_ARRAY_NAME}[{token}]){{break;}}")
+                output.append(f"if(!{C_GET_BYTE_NAME}({token})){{break;}}")
             stack.append(token)
     return "\n".join(output)
 
 
-def compile_application(name, tokens, app_list):
+def compile_application(name, tokens, app_list, memory_size):
     """Compile a function from stercus to C."""
-    declaration = (
-        f"void {name}(char {C_FUNC_ARG_NAME})"
-    )
-    body = compile_body(tokens, app_list)
+    declaration = f"void {name}(char {C_FUNC_ARG_NAME})"
+    body = compile_body(tokens, app_list, memory_size)
     definition = f"{declaration} {{\n{body}}}\n"
     return f"{declaration};\n", definition
 
 
-def compile_main(tokens, app_table, memory_size):
+def compile_main(tokens, app_table, memory_size, argv_max_bytes=None):
     """Compile the main C function."""
-    body = compile_body(tokens, app_table)
+    if argv_max_bytes is None:
+        argv_max_bytes = C_DATA_ARRAY_SIZE_NAME
+
+    body = compile_body(tokens, app_table, memory_size)
     output = f"""
     int main(int argc, char* argv[]) {{
-      {C_DATA_ARRAY_NAME} = (char *)calloc({memory_size}, sizeof(char));
-      copy_cli_args(argc, argv);
+      {C_DATA_ARRAY_NAME} = (char *)calloc({C_DATA_ARRAY_SIZE_NAME}, sizeof(char));
+      _stercus_copy_cli_args(argc, argv, {argv_max_bytes});
       {body}
       free({C_DATA_ARRAY_NAME});
       return 0;
@@ -117,7 +163,7 @@ def compile_main(tokens, app_table, memory_size):
     return dedent(output).strip()
 
 
-def compile(applications, memory_size):
+def compile(applications, memory_size, argv_max_bytes=None):
     """Compile the Stercus function table to C."""
 
     # Save and remove the main function, as it must be placed at the end of the
@@ -131,18 +177,22 @@ def compile(applications, memory_size):
     # Compile applications into C functions.
     for name, content in applications.items():
         body, declaration = compile_application(
-            name, content, applications.keys()
+            name, content, applications.keys(), memory_size
         )
         app_bodies.append(body)
         app_declarations.append(declaration)
 
-    # Initial C boilerplate.
-    c_src = C_HEADER
+    c_src = c_header(memory_size)
     c_src += "\n".join(app_bodies)
     c_src += "\n".join(app_declarations)
 
     # Compile the main function.
-    c_src += compile_main(main_appl, applications.keys(), memory_size)
+    c_src += "\n\n" + compile_main(
+        main_appl,
+        applications.keys(),
+        memory_size,
+        argv_max_bytes=argv_max_bytes,
+    )
     return c_src
 
 

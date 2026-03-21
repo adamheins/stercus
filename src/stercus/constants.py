@@ -1,6 +1,10 @@
 """ Stercus Language Constants """
 
 C_DATA_ARRAY_NAME = "_STERCUS_DATA"
+C_DATA_ARRAY_SIZE_NAME = "_STERCUS_DATA_SIZE"
+C_GET_BYTE_NAME = "_stercus_get"
+C_SET_BYTE_NAME = "_stercus_set"
+
 C_FUNC_ARG_NAME = "s0"
 STERCUS_ARG_NAME = "$"
 

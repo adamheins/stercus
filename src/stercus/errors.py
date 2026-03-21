@@ -1,8 +1,7 @@
 """ Errors that may be raised during compilation of the Stercus language. """
 
-class AddressOutOfRangeError(Exception):
-    """ Raised when the program attempted to access an address outside the range
-        of STERCUS_DATA_SIZE. """
+class IndexOutOfRangeError(Exception):
+    """ Raised when the program attempted to access an index outside of memory."""
     pass
 
 class UnbalancedBracketsError(Exception):

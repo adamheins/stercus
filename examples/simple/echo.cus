@@ -1,12 +1,15 @@
-# This program prints back out the first CLI argument.
+# This program prints back out the passed CLI arguments.
 
-# use byte 100 as a counting variable
-[100 0]
+# if [0] is non-empty, print it and assign to zero to break the loop
+(0 [0 : 0])
 
-# print bytes until a NULL is reached
-([100]
-  [[100] :]
-  [100 +]
+# assign to index of the next char
+[0 1]
+
+# keep printing chars until NULL is reached
+([0]
+  [[0] :]
+  [0 +]
 )
 
 # also output a newline (10 is ascii newline code)

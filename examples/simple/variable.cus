@@ -1,8 +1,8 @@
-# assign 'a' to have a value 5
+# assign a = 100
 {a [$ 100]}
 
-# assign the value of 'a' to 'b':
+# assign b = a
 {b [$ a]}
 
-# put in byte 0 and output
+# output b
 [0 b .]

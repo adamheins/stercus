@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-from stercus import compile_file
+from stercus import compile_file, IndexOutOfRangeError
 
 
 def main():
@@ -26,7 +26,11 @@ def main():
     )
     args = parser.parse_args()
 
-    c_str = compile_file(args.src, memory_size=args.memory_size)
+    try:
+        c_str = compile_file(args.src, memory_size=args.memory_size)
+    except IndexOutOfRangeError as e:
+        print(e)
+        return 1
 
     output = args.output
     if output is None:
