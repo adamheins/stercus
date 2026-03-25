@@ -106,6 +106,7 @@ One use of custom applications is to create named values:
 ```
 
 ## Compilation
+
 Stercus files typically end with a `.cus` extension. Stercus files can be
 compiled using the `stercusc` executable installed with this package. By
 default, the compiler produces C source files, which can then be compiled with
@@ -117,7 +118,7 @@ stercusc example.cus  # produces `example.c`
 # use a memory array of 100 bytes (default is 10,000)
 stercusc example.cus -m 100
 
-# compile the C code as well (assuming you have gcc installed):
+# pass a command to compile to C file as well (e.g. using gcc)
 stercusc example.cus -c gcc  # produces `example` binary
 
 # the above command is equivalent to:
@@ -125,9 +126,30 @@ stercusc example.cus
 gcc example.c -o example
 ```
 
+## Bounds Checking
+
+`stercusc` can identify some out-of-bounds memory accesses when compiling, in
+which case it will raise an error and abort. Other out-of-bounds errors are
+checked at runtime; if access to an out-of-bounds element of the memory array
+is attempted, a warning is printed. If retrieving the element's value, zero
+will be returned instead; if setting the value, nothing is done.
+
+## Command Line Arguments
+
+A binary compiled with `stercusc` and a C compiler automatically loads the
+provided CLI arguments into the initial bytes of its memory array (unlike other
+programs, the program name itself is not included). For example
+```
+# suppose I have the executable called `example` from above and I run
+./example foo bar
+
+# then the first 7 bytes of example's memory array are (the numeric
+# representations of): ['f', 'o', 'o', ' ', 'b', 'a', 'r']
+```
+
 ## Tools
 
-* The `text2stercus` executable convert text to the stercus expression for
+* The `text2stercus` executable converts text to the stercus expression for
   outputting that string of text.
 
 ## Examples

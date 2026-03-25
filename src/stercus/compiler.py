@@ -27,12 +27,11 @@ def c_header(memory_size):
         }}
     }}
 
-    int {C_SET_BYTE_NAME}(int i, char value) {{
+    void {C_SET_BYTE_NAME}(int i, char value) {{
         if (i < {C_DATA_ARRAY_SIZE_NAME}) {{
             {C_DATA_ARRAY_NAME}[i] = value;
         }} else {{
             fprintf(stderr, "attempted out of bounds access to index %d\\n", i);
-            return 0;
         }}
     }}
 
