@@ -1,11 +1,10 @@
 # Stercus
-Stercus is a simple language. Programs are written to operate on a pre-defined
-block of memory, similar to brainfuck. The memory block is arbitrarily-sized
-and can be set when compiling a program.
+Stercus is a simple and impractical language. Programs are written to operate
+on a pre-defined block of memory, similar to brainfuck. The memory block is
+arbitrarily-sized and can be set when compiling a program.
 
-Stercus is very simple and impractical, and therefore provides an interesting
-challenge: create a meaningful program with an _extremely_ limited toolset. The
-word "meaningful" is being used loosely here.
+Stercus provides an interesting challenge: create a meaningful program with an
+_extremely_ limited toolset.
 
 ## Applicators
 The memory is random-accessed using __applicators__. Applicators "apply" an
@@ -124,6 +123,10 @@ stercusc example.cus -c gcc  # produces `example` binary
 # the above command is equivalent to:
 stercusc example.cus
 gcc example.c -o example
+
+# use a different data type for the stercus memory array
+# default is char; to change to int, for example:
+stercusc example.cus -d int
 ```
 
 ## Bounds Checking
@@ -149,8 +152,12 @@ programs, the program name itself is not included). For example
 
 ## Tools
 
-* The `text2stercus` executable converts text to the stercus expression for
-  outputting that string of text.
+* The included `text2stercus` executable converts text to the stercus
+  expression for outputting that string of text.
+* The script `tools/generate_quine.py` is an LLM-generated tool to produce a
+  stercus [quine](https://en.wikipedia.org/wiki/Quine_(computing)) (that is, a
+  program that produces itself as output). The result is included in
+  `examples/quine.cus`.
 
 ## Examples
 Additional example stercus programs may be found in the `examples/` directory.
