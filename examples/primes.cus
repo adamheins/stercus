@@ -1,0 +1,88 @@
+# Print the first N prime numbers (N = 15)
+# Uses the Sieve of Eratosthenes over cells 2..100
+# Requires int-sized cells: compile with -d int
+#
+# Maximum supported N: 25 (there are exactly 25 primes in the sieve range 2..100:
+# 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97).
+# To support larger N, extend the sieve range and increase the outer sieve loop
+# to cover primes up to sqrt(new_upper_bound).
+#
+# Memory layout:
+#   Cells 2..100  : sieve array (1 = prime candidate, 0 = composite)
+#   Cell 1000     : outer sieve pointer p (2..10)
+#   Cell 1001     : outer sieve loop counter (9 iterations)
+#   Cell 1002     : marking pointer m
+#   Cell 1003     : inner loop countdown (101 - 2p, decremented by 1 per mark)
+#   Cell 1004     : temp for adding p to m via sub-loop
+#   Cell 1005     : one-shot conditional flag
+#   Cell 1006     : scan pointer (phase 3)
+#   Cell 1007     : primes found count
+#   Cell 1008     : N (target = 15)
+#   Cell 1009     : continue flag (loop control for phase 3)
+#   Cell 1010     : diff = N - primes_found
+#   Cell 1011     : temp for subtraction
+
+# Phase 1: Initialize sieve - set mem[2..100] = 1
+[1000 99]
+[1001 2]
+(1000
+  [[1001] 1]
+  [1001 +]
+  [1000 -]
+)
+
+# Phase 2: Sieve - mark composites
+# For p = 2..10, if mem[p] == 1 (p is prime), mark all multiples as 0.
+# Inner loop runs (101 - 2p) times, decrementing a countdown by 1 each step
+# and advancing m by p via a sub-loop. Work cells are at 1000+ so the marking
+# pointer cannot reach them even with the extra iterations past cell 100.
+[1000 2]
+[1001 9]
+(1001
+  # One-shot: only sieve if mem[p] == 1
+  [1005 [[1000]]]
+  (1005
+    # Compute m = 2p
+    [1002 [1000]]
+    [1004 [1000]]
+    (1004 [1002 +] [1004 -])
+
+    # Countdown = 101 - 2p: start at 101, subtract 2p
+    [1003 101]
+    [1004 [1002]]
+    (1004 [1003 -] [1004 -])
+
+    # Inner loop: mark mem[m]=0, advance m by p, decrement countdown
+    (1003
+      [[1002] 0]
+      [1004 [1000]]
+      (1004 [1002 +] [1004 -])
+      [1003 -]
+    )
+    [1005 0]
+  )
+  [1000 +]
+  [1001 -]
+)
+
+# Phase 3: Scan cells 2..100 and print the first 15 primes
+[1008 25]
+[1007 0]
+[1006 2]
+[1009 1]
+(1009
+  # One-shot: if mem[scan_ptr] == 1, it is prime - print it
+  [1005 [[1006]]]
+  (1005
+    [1006 .]
+    [0 10 :]
+    [1007 +]
+    [1005 0]
+  )
+  # continue flag = N - primes_found; exits when all N primes are printed
+  [1010 [1008]]
+  [1011 [1007]]
+  (1011 [1010 -] [1011 -])
+  [1009 [1010]]
+  [1006 +]
+)

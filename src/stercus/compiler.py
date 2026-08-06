@@ -9,14 +9,14 @@ from .constants import *
 from .errors import *
 
 
-def c_header(memory_size):
+def c_header(memory_size, data_type="char"):
     return dedent(
         f"""
     #include <stdio.h>
     #include <stdlib.h>
 
     const size_t {C_DATA_ARRAY_SIZE_NAME} = {memory_size};
-    char *{C_DATA_ARRAY_NAME};
+    {data_type} *{C_DATA_ARRAY_NAME};
 
     int {C_GET_BYTE_NAME}(int i) {{
         if (i < {C_DATA_ARRAY_SIZE_NAME}) {{
@@ -27,7 +27,7 @@ def c_header(memory_size):
         }}
     }}
 
-    void {C_SET_BYTE_NAME}(int i, char value) {{
+    void {C_SET_BYTE_NAME}(int i, {data_type} value) {{
         if (i < {C_DATA_ARRAY_SIZE_NAME}) {{
             {C_DATA_ARRAY_NAME}[i] = value;
         }} else {{
@@ -144,7 +144,7 @@ def compile_application(name, tokens, app_list, memory_size):
     return f"{declaration};\n", definition
 
 
-def compile_main(tokens, app_table, memory_size, argv_max_bytes=None):
+def compile_main(tokens, app_table, memory_size, data_type="char", argv_max_bytes=None):
     """Compile the main C function."""
     if argv_max_bytes is None:
         argv_max_bytes = C_DATA_ARRAY_SIZE_NAME
@@ -152,7 +152,7 @@ def compile_main(tokens, app_table, memory_size, argv_max_bytes=None):
     body = compile_body(tokens, app_table, memory_size)
     output = f"""
     int main(int argc, char* argv[]) {{
-      {C_DATA_ARRAY_NAME} = (char *)calloc({C_DATA_ARRAY_SIZE_NAME}, sizeof(char));
+      {C_DATA_ARRAY_NAME} = ({data_type} *)calloc({C_DATA_ARRAY_SIZE_NAME}, sizeof({data_type}));
       _stercus_copy_cli_args(argc, argv, {argv_max_bytes});
       {body}
       free({C_DATA_ARRAY_NAME});
@@ -162,7 +162,7 @@ def compile_main(tokens, app_table, memory_size, argv_max_bytes=None):
     return dedent(output).strip()
 
 
-def compile(applications, memory_size, argv_max_bytes=None):
+def compile(applications, memory_size, data_type="char", argv_max_bytes=None):
     """Compile the Stercus function table to C."""
 
     # Save and remove the main function, as it must be placed at the end of the
@@ -181,7 +181,7 @@ def compile(applications, memory_size, argv_max_bytes=None):
         app_bodies.append(body)
         app_declarations.append(declaration)
 
-    c_src = c_header(memory_size)
+    c_src = c_header(memory_size, data_type=data_type)
     c_src += "\n".join(app_bodies)
     c_src += "\n".join(app_declarations)
 
@@ -190,6 +190,7 @@ def compile(applications, memory_size, argv_max_bytes=None):
         main_appl,
         applications.keys(),
         memory_size,
+        data_type=data_type,
         argv_max_bytes=argv_max_bytes,
     )
     return c_src

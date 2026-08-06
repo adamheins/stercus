@@ -6,7 +6,7 @@ from .parser import parse
 from .preprocessor import preprocess
 
 
-def compile_string(src, memory_size):
+def compile_string(src, memory_size, data_type):
     """Compile a Stercus string to C.
 
     Parameters
@@ -24,7 +24,7 @@ def compile_string(src, memory_size):
     src = preprocess(src)
     src = lex(src)
     src = parse(src)
-    src = compile(src, memory_size)
+    src = compile(src, memory_size=memory_size, data_type=data_type)
     return src
 
 

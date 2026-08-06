@@ -24,10 +24,17 @@ def main():
         type=str,
         help="Command to call to compile code to C. If provided, a binary is produced using this C compiler. Otherwise, the output is a C source code file.",
     )
+    parser.add_argument(
+        "-d",
+        "--data-type",
+        type=str,
+        default="char",
+        help="Data type for the Stercus data array.",
+    )
     args = parser.parse_args()
 
     try:
-        c_str = compile_file(args.src, memory_size=args.memory_size)
+        c_str = compile_file(args.src, memory_size=args.memory_size, data_type=args.data_type)
     except IndexOutOfRangeError as e:
         print(e)
         return 1
