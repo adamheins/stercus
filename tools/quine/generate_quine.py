@@ -13,45 +13,70 @@ The source is two parts:
 
 D is the *data* section: a run of literal assignments
 
-    [1 c1][2 c2]...[cN N]
+    [1 c1][2 c2]...[N cN]
 
 where ci is the ASCII code of the i-th character of P (the *printer*).
 Note that D encodes P only -- it does not encode itself.  Running D just
 fills cells 1..N; it produces no output.
 
-P is the *printer*, and is made of two loops over those same cells.  Both
-walk a pointer (cell PTR) up from 1 and stop at the first zero cell, which
-is cell N+1: calloc zeroes memory and nothing else is ever written there.
+P is the *printer*, and is made of two loops over those same cells:
+
+    ([0 +][A :][0 .][B :][[0] .][C :])([Q +][[Q] :])
 
   Loop 1 reproduces D.  For each cell it prints '[', the index as an int,
   a space, the value as an int, and ']' -- exactly the text of the
-  assignment that stored it:
-
-      [PTR 1]([PTR][0 91 :][PTR .][0 32 :][[PTR] .][0 93 :][PTR +])
+  assignment that stored it.
 
   Loop 2 reproduces P.  For each cell it prints the value as a char,
-  spelling out P, because P's characters are what D stored:
-
-      [PTR 1]([PTR][[PTR] :][PTR +])
+  spelling out P, because P's characters are what D stored.
 
 So the output is D + P = S.  This is the usual quine trick: the data is
 printed twice, once quoted (as int codes) and once plain (as characters).
 
-A note on the conditionals: the compiler emits the loop test from the
-*first* applicator in a conditional body, using the accessor twice --
-`([PTR] ...)` compiles to `if(!get(get(PTR))) break;`, i.e. "test the cell
-the pointer points at".  That is why each loop body opens with a bare
-`[PTR]`.
+Three tricks keep the printer short, and the printer is what costs: every
+character of P is a cell, and every cell is ~7 characters of D, so a
+character shaved off P is worth about 8 off the quine.
 
-There is no fixed point to solve.  P is a constant string, and D is a pure
-function of P, so the program is built in one pass.
+  1. The literals come out of the data.  Printing '[', ' ' and ']' needs
+     those bytes in memory somewhere, and the data section is already full
+     of them -- P's own characters.  So instead of a scratch cell loaded
+     on the fly (`[0 91 :]`, 8 chars) we just print the data cell that
+     happens to hold that byte (`[A :]`, 5 chars).  P begins
+
+         ( [ 0   + ]
+         1 2 3 4 5 6      <- cell
+
+     so A=2 holds '[', B=4 holds ' ' and C=6 holds ']'.  This is
+     self-referential -- the indices depend on P, which depends on the
+     indices -- so build_printer() iterates to a fixed point.
+
+  2. The pointer bump rides in the loop test.  The compiler takes the
+     first applicator of a conditional as its test, applying it and then
+     testing the cell it points at: `([0 +] ...)` compiles to
+
+         while(1){ set(0, get(0)+1); if(!get(get(0))) break; ... }
+
+     which is a walk, a test and a stop condition in seven characters, and
+     needs no separate `[0 +]` in the body.
+
+  3. Neither loop needs an initializer.  Memory is calloc'd, so a pointer
+     cell starts at 0 and the test above bumps it to 1 -- the first data
+     cell -- before the first test.  Loop 1 uses cell 0.  Loop 2 cannot
+     reuse it (loop 1 leaves it at N+1, and `[0 0]` to reset costs more
+     than it saves), so it uses cell Q = N+2, which is past the data and
+     therefore still zero.  Q must clear N+1 as well as N: that cell is
+     the zero terminator both loops stop on, and a pointer parked there
+     would hold its own non-zero index and spin forever.
 
 Sizing
 ------
-PTR must sit outside the data region 1..N, and N is just len(P).  With
-PTR = 200 we get N = 91, comfortably clear of the pointer.  N < 127 also
-means every value stored -- indices and ASCII codes alike -- fits in a
-signed char, so the quine compiles with the default cell type.
+N = len(P) = 50, so cells 1..50 are data, 51 is the terminator and 52 is
+loop 2's pointer.  Every value stored -- indices and ASCII codes alike --
+is under 127, so the quine compiles with the default `char` cell type.
+
+There is no fixed point to solve between D and P: P is a constant string
+and D is a pure function of P, so the program is built in one pass once
+build_printer() has settled P's self-references.
 """
 
 import argparse
@@ -63,30 +88,47 @@ from pathlib import Path
 # The printer
 # ---------------------------------------------------------------------------
 
-SCRATCH = 0    # holds literal characters just long enough to print them
-PTR = 200      # walking pointer; must exceed N = len(PRINTER)
+PTR = 0        # loop 1's pointer; cell 0 is the only free single-digit cell
 
-PRINT_D = (
-    f"[{PTR} 1]"                 # start at the first data cell
-    f"([{PTR}]"                  # loop while the pointed-at cell is non-zero
-    f"[{SCRATCH} 91 :]"          # '['
-    f"[{PTR} .]"                 # the index
-    f"[{SCRATCH} 32 :]"          # ' '
-    f"[[{PTR}] .]"               # the value, as an int
-    f"[{SCRATCH} 93 :]"          # ']'
-    f"[{PTR} +]"
-    f")"
-)
 
-PRINT_P = (
-    f"[{PTR} 1]"
-    f"([{PTR}]"
-    f"[[{PTR}] :]"               # the value, as a char
-    f"[{PTR} +]"
-    f")"
-)
+def printer(open_bracket, space, close_bracket, ptr2):
+    """Assemble the printer from the cell indices it reads.
 
-PRINTER = PRINT_D + PRINT_P
+    *open_bracket*, *space* and *close_bracket* are the data cells holding
+    the bytes '[', ' ' and ']'; *ptr2* is loop 2's pointer cell.
+    """
+    print_d = (
+        f"("                             # loop while the pointed-at cell is
+        f"[{PTR} +]"                     # non-zero, bumping the pointer first
+        f"[{open_bracket} :]"            # '['
+        f"[{PTR} .]"                     # the index
+        f"[{space} :]"                   # ' '
+        f"[[{PTR}] .]"                   # the value, as an int
+        f"[{close_bracket} :]"           # ']'
+        f")"
+    )
+    print_p = f"([{ptr2} +][[{ptr2}] :])"
+    return print_d + print_p
+
+
+def build_printer():
+    """Solve P's self-references: it cites cells holding its own bytes."""
+    guess = printer(2, 4, 6, 52)
+    for _ in range(100):
+        # The i-th character of P lives in cell i+1.
+        settled = printer(
+            guess.index("[") + 1,
+            guess.index(" ") + 1,
+            guess.index("]") + 1,
+            len(guess) + 2,
+        )
+        if settled == guess:
+            return settled
+        guess = settled
+    raise RuntimeError("printer self-references did not settle")
+
+
+PRINTER = build_printer()
 
 
 def data_section(text):
@@ -97,8 +139,9 @@ def data_section(text):
 def build_quine():
     src = data_section(PRINTER) + PRINTER
     n = len(PRINTER)
-    if n >= PTR:
-        raise RuntimeError(f"printer ({n} chars) overruns pointer cell {PTR}")
+    ptr2 = n + 2
+    if max(ptr2, max(ord(c) for c in PRINTER)) > 127:
+        raise RuntimeError("quine does not fit in a signed char")
     return src
 
 
@@ -120,14 +163,18 @@ def simulate(src):
         pos = close + 1
 
     out = []
-    ptr = 1
-    while mem.get(ptr, 0) != 0:
+    ptr = 0
+    while True:
+        ptr += 1
+        if mem.get(ptr, 0) == 0:
+            break
         out.append(f"[{ptr} {mem[ptr]}]")
+    ptr = 0
+    while True:
         ptr += 1
-    ptr = 1
-    while mem.get(ptr, 0) != 0:
+        if mem.get(ptr, 0) == 0:
+            break
         out.append(chr(mem[ptr]))
-        ptr += 1
     return "".join(out)
 
 
@@ -143,7 +190,7 @@ def report_mismatch(got, want):
 
 def run_compiled(path, cc):
     """Compile the quine with stercusc and the C compiler, then run it."""
-    root = Path(__file__).resolve().parent.parent
+    root = Path(__file__).resolve().parent.parent.parent
     binary = path.with_suffix("")
     stercusc = root / ".venv" / "bin" / "stercusc"
     if not stercusc.exists():
