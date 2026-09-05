@@ -10,7 +10,7 @@ uv run python generate_quine.py
 
 Compile and verify:
 ```
-# generates quine binary (the default char cell type is enough)
+# generates quine binary
 uv run stercusc quine.cus -c gcc
 
 # run and capture output
