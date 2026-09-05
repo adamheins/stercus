@@ -18,7 +18,7 @@ def c_header(memory_size, data_type="char"):
     const size_t {C_DATA_ARRAY_SIZE_NAME} = {memory_size};
     {data_type} *{C_DATA_ARRAY_NAME};
 
-    int {C_GET_BYTE_NAME}(int i) {{
+    {data_type} {C_GET_BYTE_NAME}(int i) {{
         if (i < {C_DATA_ARRAY_SIZE_NAME}) {{
             return {C_DATA_ARRAY_NAME}[i];
         }} else {{

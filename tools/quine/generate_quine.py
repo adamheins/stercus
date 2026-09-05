@@ -162,7 +162,7 @@ def main():
         "-o",
         "--output",
         type=Path,
-        default=Path(__file__).resolve().parent.parent / "examples" / "quine.cus",
+        default="quine.cus",
         help="Where to write the quine.",
     )
     parser.add_argument(

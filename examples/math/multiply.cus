@@ -1,8 +1,6 @@
-# Multiply two values. Note that since each stercus position is a byte of
-# memory, this multiplication algorithm will only work correctly when the
-# result is less than 256.
-[0 ,]
-[1 ,]
+# Multiply 10 x 25
+[0 10]
+[1 25]
 (0
   [2 [1]]
   (2
