@@ -53,7 +53,7 @@ def main():
             f.write(c_str)
             f.close()
 
-            args = [args.c_compiler_command, "-o", output, f.name]
+            args = args.c_compiler_command.split() + ["-o", output, f.name]
             subprocess.run(args)
 
 
